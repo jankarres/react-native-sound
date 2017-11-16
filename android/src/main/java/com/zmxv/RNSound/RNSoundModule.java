@@ -20,6 +20,8 @@ import com.facebook.react.modules.core.ExceptionsManagerModule;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import java.io.IOException;
 
 import android.util.Log;
@@ -175,6 +177,22 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
     return null;
   }
 
+  protected void releaseAllPlayers(Integer exceptOf) {
+    if (this.playerPool.size() > 1) {
+      List<Integer> playersToRelease = new ArrayList<Integer>();
+
+      for (Map.Entry<Integer, MediaPlayer> entry : this.playerPool.entrySet()) {
+          if (entry.getKey() != exceptOf) {
+            playersToRelease.add(entry.getKey());
+          }
+      }
+
+      for(Integer key : playersToRelease){
+        this.release(key);
+      }
+    }
+  }
+
   @ReactMethod
   public void play(final Integer key, final Callback callback) {
     MediaPlayer player = this.playerPool.get(key);
@@ -196,6 +214,9 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
 
       this.focusedPlayerKey = key;
     }
+
+    // Release all players, excepr of this one
+    this.releaseAllPlayers(key);
 
     player.setOnCompletionListener(new OnCompletionListener() {
       boolean callbackWasCalled = false;
