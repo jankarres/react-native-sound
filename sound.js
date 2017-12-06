@@ -4,6 +4,10 @@ var RNSound = require('react-native').NativeModules.RNSound;
 var IsAndroid = RNSound.IsAndroid;
 var IsWindows = RNSound.IsWindows;
 var resolveAssetSource = require("react-native/Libraries/Image/resolveAssetSource");
+import {
+  DeviceEventEmitter
+} from 'react-native';
+
 var nextKey = 0;
 
 function isRelativePath(path) {
@@ -74,10 +78,33 @@ Sound.prototype.stop = function(callback) {
   return this;
 };
 
-Sound.prototype.reset = function() {
-  if (this._loaded && IsAndroid) {
-    RNSound.reset(this._key);
+Sound.prototype.on = function (event, callback) {
+  if (event == "playing") {
+    if (IsAndroid) {
+      onPlayingCallbacks.set(this._key, callback);
+    }
+
+    return;
   }
+
+  console.warn(`RNSound: Methode 'on' event '${String(event)}' is unknown.`);
+};
+
+DeviceEventEmitter.addListener("RNSound-playing", (options) => {
+  if (!options || options.key == null || options.key == undefined) {
+    return;
+  }
+
+  var callback = onPlayingCallbacks.get(options.key);
+
+  if (callback) {
+    callback(options.isPlaying, options.currentTime);
+  }
+});
+
+Sound.prototype.reset = function () {
+  console.warn("RNSound: Methode 'reset' is deprecated, because MediaPlayer have been replaced with ExoPlayer where no reset methode is required.");
+
   return this;
 };
 
@@ -104,7 +131,7 @@ Sound.prototype.getVolume = function() {
 Sound.prototype.setVolume = function(value) {
   this._volume = value;
   if (this._loaded) {
-    if (IsAndroid || IsWindows) {
+    if (IsWindows) {
       RNSound.setVolume(this._key, value, value);
     } else {
       RNSound.setVolume(this._key, value);
@@ -192,8 +219,10 @@ Sound.prototype.setCategory = function(value) {
   Sound.setCategory(value, false);
 }
 
-Sound.enable = function(enabled) {
-  RNSound.enable(enabled);
+Sound.enable = function (enabled) {
+  if (!IsAndroid) {
+    RNSound.enable(enabled);
+  }
 };
 
 Sound.enableInSilenceMode = function(enabled) {
@@ -225,4 +254,4 @@ Sound.DOCUMENT = RNSound.NSDocumentDirectory;
 Sound.LIBRARY = RNSound.NSLibraryDirectory;
 Sound.CACHES = RNSound.NSCachesDirectory;
 
-module.exports = Sound;
+export default Sound;

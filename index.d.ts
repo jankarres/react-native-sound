@@ -73,6 +73,18 @@ declare class Sound {
   stop(cb?: () => void): void
 
   /**
+   * Event hook for various events
+   * 
+   * Events:
+   *  - playing: callback have to be (isPlaying: boolean, currentTime: number) => void
+   * 
+   * @param event
+   * @param cb
+   * @param remove
+   */
+  on(event: string, cb: Function, remove?: boolean): void
+
+  /**
    * Reset the audio player to its uninitialized state (android only)
    */
   reset(): void
