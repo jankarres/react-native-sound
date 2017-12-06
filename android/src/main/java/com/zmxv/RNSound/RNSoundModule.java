@@ -210,7 +210,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
       if (callback != null) {
         callback.invoke(false);
       }
-
+      
       return;
     }
 
@@ -218,6 +218,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
     if (player.getPlayWhenReady()) {
       return;
     }
+
 
     // Request audio focus in Android system (playback without any other audio playbacks on system)
     if (!this.mixWithOthers) {
