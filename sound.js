@@ -8,6 +8,7 @@ import {
   DeviceEventEmitter
 } from 'react-native';
 
+var onPlayingCallbacks = new Map();
 var nextKey = 0;
 
 function isRelativePath(path) {
