@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 var onPlayingCallbacks = new Map();
+var onProgressCallbacks = new Map();
 var nextKey = 0;
 
 function isRelativePath(path) {
@@ -86,6 +87,12 @@ Sound.prototype.on = function (event, callback) {
     }
 
     return;
+  } else if (event == "progress") {
+    if (IsAndroid) {
+      onProgressCallbacks.set(this._key, callback);
+    }
+
+    return;
   }
 
   console.warn(`RNSound: Methode 'on' event '${String(event)}' is unknown.`);
@@ -100,6 +107,18 @@ DeviceEventEmitter.addListener("RNSound-playing", (options) => {
 
   if (callback) {
     callback(options.isPlaying, options.currentTime);
+  }
+});
+
+DeviceEventEmitter.addListener("RNSound-progress", (options) => {
+  if (!options || options.key == null || options.key == undefined) {
+    return;
+  }
+
+  var callback = onProgressCallbacks.get(options.key);
+
+  if (callback) {
+    callback(options.progress);
   }
 });
 
