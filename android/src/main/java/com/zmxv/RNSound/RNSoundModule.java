@@ -124,6 +124,9 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
     this.playerEventListenerPool.put(key, eventListener);
 
     player.addListener(eventListener);
+
+    // Set update progress handler
+    this.updateProgress(key, new Handler());
   }
 
   /**
@@ -237,6 +240,9 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
     if (callback != null) {
       callback.invoke(true);
     }
+
+    // Set update progress handler
+    this.updateProgress(key, new Handler());
 
     // Send event to event emitter
     WritableMap data = Arguments.createMap();
@@ -486,7 +492,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
 
     // Return position in seconds and isPlaying status
     Long positionInMs = player.getCurrentPosition();
-    callback.invoke((int) (positionInMs * .001), player.getPlayWhenReady());
+    callback.invoke((positionInMs * .001), player.getPlayWhenReady());
   }
 
   /**
@@ -553,6 +559,39 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
         }
       }
     }
+  }
+
+  private void updateProgress(final Integer key, final Handler handler) {
+    // Get player from pool
+    SimpleExoPlayer player = this.playerPool.get(key);
+
+    if (player == null) {
+      return;
+    }
+
+    // Player have to playback audio
+    if (!player.getPlayWhenReady()) {
+      return;
+    }
+
+    // Get playback time
+    long positionInMs = player.getCurrentPosition();
+    double positionS = (positionInMs * .001);
+
+    // Send progress event to event emitter
+    WritableMap data = Arguments.createMap();
+    data.putDouble("progress", (positionInMs * .001));
+    this.sendEvent("RNSound-progress", key, data);
+
+    // Calculate delay to next 10 seconds point and postDelayed
+    int delay = (int) Math.round(10000 - (positionInMs % 10000));
+
+    handler.postDelayed(new Runnable() {
+      @Override
+      public void run() {
+        updateProgress(key, handler);
+      }
+    }, delay);
   }
 
   /**
