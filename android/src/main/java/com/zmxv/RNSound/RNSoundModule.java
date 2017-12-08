@@ -44,7 +44,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
   Boolean mixWithOthers = true;
 
   Integer focusedPlayerKey;
-  Boolean wasPlayingBeforeFocusChange;
+  boolean wasPlayingBeforeFocusChange;
 
   /**
    * Create RNSoundModule instance without settings
@@ -545,7 +545,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
       }
 
       // Change playback state based on focus change of audio playback
-      if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
+      if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
         this.wasPlayingBeforeFocusChange = player.getPlayWhenReady();
 
         if (this.wasPlayingBeforeFocusChange) {
