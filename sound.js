@@ -5,7 +5,10 @@ var IsAndroid = RNSound.IsAndroid;
 var IsWindows = RNSound.IsWindows;
 var resolveAssetSource = require("react-native/Libraries/Image/resolveAssetSource");
 import {
-  DeviceEventEmitter
+  DeviceEventEmitter,
+  NativeModules,
+  NativeEventEmitter,
+  Platform
 } from 'react-native';
 
 var onPlayingCallbacks = new Map();
@@ -68,14 +71,18 @@ Sound.prototype.play = function (onEnd) {
 
 Sound.prototype.pause = function (callback) {
   if (this._loaded) {
-    RNSound.pause(this._key, () => { callback && callback() });
+    RNSound.pause(this._key, () => {
+      callback && callback()
+    });
   }
   return this;
 };
 
 Sound.prototype.stop = function (callback) {
   if (this._loaded) {
-    RNSound.stop(this._key, () => { callback && callback() });
+    RNSound.stop(this._key, () => {
+      callback && callback()
+    });
   }
   return this;
 };
@@ -88,8 +95,10 @@ Sound.prototype.on = function (event, callback) {
 
     return;
   } else if (event == "progress") {
-    if (IsAndroid) {
+    if (Platform.OS == "android") {
       onProgressCallbacks.set(this._key, callback);
+    } else { // iOS
+      onProgressCallbacks.set(0, callback);
     }
 
     return;
@@ -98,29 +107,47 @@ Sound.prototype.on = function (event, callback) {
   console.warn(`RNSound: Methode 'on' event '${String(event)}' is unknown.`);
 };
 
-DeviceEventEmitter.addListener("RNSound-playing", (options) => {
-  if (!options || options.key == null || options.key == undefined) {
-    return;
-  }
+if (Platform.OS == "android") {
+  DeviceEventEmitter.addListener("RNSound-playing", (options) => {
+    if (!options || options.key == null || options.key == undefined) {
+      return;
+    }
 
-  var callback = onPlayingCallbacks.get(options.key);
+    var callback = onPlayingCallbacks.get(options.key);
 
-  if (callback) {
-    callback(options.isPlaying, options.currentTime);
-  }
-});
+    if (callback) {
+      callback(options.isPlaying, options.currentTime);
+    }
+  });
 
-DeviceEventEmitter.addListener("RNSound-progress", (options) => {
-  if (!options || options.key == null || options.key == undefined) {
-    return;
-  }
+  DeviceEventEmitter.addListener("RNSound-progress", (options) => {
+    if (!options || options.key == null || options.key == undefined) {
+      return;
+    }
 
-  var callback = onProgressCallbacks.get(options.key);
+    var callback = onProgressCallbacks.get(options.key);
 
-  if (callback) {
-    callback(options.progress);
-  }
-});
+    if (callback) {
+      callback(options.progress);
+    }
+  });
+}
+
+if (Platform.OS == "ios") {
+  const moduleEvent = new NativeEventEmitter(NativeModules.RNSound);
+
+  moduleEvent.addListener("RNSound-progress", (options) => {
+    if (!options) {
+      return;
+    }
+
+    var callback = onProgressCallbacks.get(0);
+
+    if (callback) {
+      callback(options);
+    }
+  });
+}
 
 Sound.prototype.reset = function () {
   console.warn("RNSound: Methode 'reset' is deprecated, because MediaPlayer have been replaced with ExoPlayer where no reset methode is required.");

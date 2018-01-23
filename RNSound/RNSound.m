@@ -12,6 +12,11 @@
 }
 
 @synthesize _key = _key;
+@synthesize _playbackTimer = _playbackTimer;
+
+- (NSArray<NSString *> *)supportedEvents {
+  return @[@"RNSound-progress"];
+}
 
 - (void)audioSessionChangeObserver:(NSNotification *)notification{
     NSDictionary* userInfo = notification.userInfo;
@@ -209,12 +214,30 @@ RCT_EXPORT_METHOD(prepare:(NSString*)fileName
   }
 }
 
+/**
+ * Emit every 10th secound send progress message
+ */
+-(void)onProgressPlayer:(NSTimer*)timer {
+    AVAudioPlayer* player = [self playerForKey:_key];
+    NSNumber *currentTime = [NSNumber numberWithDouble:player.currentTime];
+    int currentTimeInt = [currentTime intValue];
+    double currentTimeDouble = currentTimeInt / (double)1;
+    
+    if ((currentTimeDouble / 10) == round(currentTimeDouble / 10)) {
+        [self sendEventWithName:@"RNSound-progress" body:[NSString stringWithFormat:@"%d", currentTimeInt]];
+    }
+}
+
 RCT_EXPORT_METHOD(play:(nonnull NSNumber*)key withCallback:(RCTResponseSenderBlock)callback) {
   [[AVAudioSession sharedInstance] setActive:YES error:nil];
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioSessionChangeObserver:) name:AVAudioSessionRouteChangeNotification object:nil];
   self._key = key;
   AVAudioPlayer* player = [self playerForKey:key];
   if (player) {
+    NSTimer *playbackTimer = [NSTimer timerWithTimeInterval:1.0 target:self selector:@selector(onProgressPlayer:) userInfo:nil repeats:YES];
+    self._playbackTimer = playbackTimer;
+    [[NSRunLoop mainRunLoop] addTimer:playbackTimer forMode:NSRunLoopCommonModes];
+
     [[self callbackPool] setObject:[callback copy] forKey:key];
     [player play];
   }
@@ -223,6 +246,10 @@ RCT_EXPORT_METHOD(play:(nonnull NSNumber*)key withCallback:(RCTResponseSenderBlo
 RCT_EXPORT_METHOD(pause:(nonnull NSNumber*)key withCallback:(RCTResponseSenderBlock)callback) {
   AVAudioPlayer* player = [self playerForKey:key];
   if (player) {
+    // Actually _playbackTimer not removed from NSRunLoop => memory usage higher
+    [self._playbackTimer invalidate];
+    self._playbackTimer = nil;
+      
     [player pause];
     callback(@[]);
   }
@@ -231,6 +258,9 @@ RCT_EXPORT_METHOD(pause:(nonnull NSNumber*)key withCallback:(RCTResponseSenderBl
 RCT_EXPORT_METHOD(stop:(nonnull NSNumber*)key withCallback:(RCTResponseSenderBlock)callback) {
   AVAudioPlayer* player = [self playerForKey:key];
   if (player) {
+    [self._playbackTimer invalidate];
+    self._playbackTimer = nil;
+      
     [player stop];
     player.currentTime = 0;
     callback(@[]);
